@@ -29,3 +29,6 @@ Thumbs.db
 backend/data/*.json
 backend/data/*.csv
 !backend/data/.gitkeep
+
+# Checkpointer proof (local only)
+checkpoints.sqlite
