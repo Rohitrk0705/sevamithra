@@ -35,3 +35,6 @@ checkpoints.sqlite
 
 # ChromaDB persisted collection (local only, rebuilt via ingest.py)
 backend/chroma_db/
+
+# Graph checkpointer (local only, separate from the Rung 2 toy checkpoints.sqlite)
+backend/graph/checkpoints.sqlite
