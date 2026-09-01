@@ -32,3 +32,6 @@ backend/data/*.csv
 
 # Checkpointer proof (local only)
 checkpoints.sqlite
+
+# ChromaDB persisted collection (local only, rebuilt via ingest.py)
+backend/chroma_db/
