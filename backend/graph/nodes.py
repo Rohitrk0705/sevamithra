@@ -1,24 +1,17 @@
 """
 backend/graph/nodes.py
 
-Six node stub functions for the SevaMithra LangGraph orchestrator. Each is
-a no-op placeholder: it mutates the parts of SevaState it will own for
-real in Rungs 8-12, using hardcoded/deterministic values instead of real
-agent logic, LLM calls, ChromaDB queries, or mock-API calls. Every node's
-job here is just to prove the graph shape and the checkpointer round-trip
-end-to-end.
+Node functions for the SevaMithra LangGraph orchestrator. discovery_node is
+real logic as of Rung 8 (thin wrapper around backend.agents.discovery.
+run_discovery); verification_node, execution_node, monitor_node, and
+escalate_node remain no-op placeholders pending Rungs 9-10.
 
-NOTE on schema fidelity: SchemeThread.phase and SevaState.current_phase
-are declared in backend/state.py as Literal enums that do not include
-several of the stub-stage values used below ("matched", "documents_verified",
-"submitted", "rti_drafted" for SchemeThread.phase; "monitor", "escalate" for
-SevaState.current_phase — state.py instead has "monitoring"/"escalation").
-Python does not enforce TypedDict Literals at runtime, and backend/state.py
-is explicitly out of scope for this rung, so these stub values are written
-as-is. A static type checker (mypy) would flag them. Reconciling this —
-either by widening the Literals in state.py or remapping these stub values
-to the existing enum members — is left to whichever of Rungs 8-10 first
-replaces these stubs with real logic.
+SCHEMA DRIFT — RESOLVED in Rung 8: every phase string assigned by the stubs
+below now uses the exact SchemePhase / current_phase Literal values declared
+in backend/state.py ("matched" -> "discovered", "documents_verified" ->
+"docs_ready", "submitted" -> "filed", "rti_drafted" -> "escalated_rti",
+"monitor" -> "monitoring", "escalate" -> "escalation"). Each remapping is
+noted inline at its assignment.
 """
 
 from datetime import datetime, timezone
@@ -56,7 +49,9 @@ def discovery_node(state: SevaState) -> dict:
         scheme_name="PM Kisan Samman Nidhi",
         confidence=0.85,
     )
-    thread["phase"] = "matched"
+    # Rung 8 drift fix: stub used "matched", which has no SchemePhase Literal
+    # equivalent. make_scheme_thread() already defaults phase to "discovered"
+    # (the exact Literal for "found, not yet verified"), so no override needed.
 
     step = make_reasoning_step(
         agent="discovery",
@@ -83,7 +78,10 @@ def verification_node(state: SevaState) -> dict:
     updated_threads = {}
     for scheme_id, thread in state["scheme_threads"].items():
         updated = dict(thread)
-        updated["phase"] = "documents_verified"
+        # Rung 8 drift fix: stub used "documents_verified", which has no
+        # SchemePhase Literal equivalent. Closest existing member is
+        # "docs_ready" (documents checked, ready to proceed).
+        updated["phase"] = "docs_ready"
         updated_threads[scheme_id] = updated
 
     step = make_reasoning_step(
@@ -108,7 +106,9 @@ def execution_node(state: SevaState) -> dict:
     updated_threads = {}
     for scheme_id, thread in state["scheme_threads"].items():
         updated = dict(thread)
-        updated["phase"] = "submitted"
+        # Rung 8 drift fix: stub used "submitted", which has no SchemePhase
+        # Literal equivalent. Closest existing member is "filed".
+        updated["phase"] = "filed"
         updated["application_id"] = f"APP-{scheme_id}-STUB"
         updated_threads[scheme_id] = updated
 
@@ -155,7 +155,9 @@ def monitor_node(state: SevaState) -> dict:
         ),
     )
     return {
-        "current_phase": "monitor",
+        # Rung 8 drift fix: stub used "monitor", which has no SevaState
+        # current_phase Literal equivalent. state.py declares "monitoring".
+        "current_phase": "monitoring",
         "scheme_threads": updated_threads,
         "reasoning_log": [step],
         "updated_at": now,
@@ -166,7 +168,10 @@ def escalate_node(state: SevaState) -> dict:
     updated_threads = {}
     for scheme_id, thread in state["scheme_threads"].items():
         updated = dict(thread)
-        updated["phase"] = "rti_drafted"
+        # Rung 8 drift fix: stub used "rti_drafted", which has no SchemePhase
+        # Literal equivalent. Closest existing member is "escalated_rti"
+        # (drafted and escalated to the RTI track; not yet "rti_sent").
+        updated["phase"] = "escalated_rti"
         # Rung 6 spec calls this field "rti_markdown"; backend/state.py's
         # SchemeThread already declares "rti_draft" for this purpose, so
         # that existing field is used rather than adding an undeclared key.
@@ -185,7 +190,9 @@ def escalate_node(state: SevaState) -> dict:
         ),
     )
     return {
-        "current_phase": "escalate",
+        # Rung 8 drift fix: stub used "escalate", which has no SevaState
+        # current_phase Literal equivalent. state.py declares "escalation".
+        "current_phase": "escalation",
         "scheme_threads": updated_threads,
         "reasoning_log": [step],
         "updated_at": _now_iso(),

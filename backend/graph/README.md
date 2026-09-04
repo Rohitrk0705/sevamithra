@@ -3,11 +3,10 @@
 ## What this is
 
 The full 6-node SevaMithra state machine, wired end-to-end and checkpointed
-via `SqliteSaver`. Every node is currently a **stub**: hardcoded/deterministic
-output instead of real agent logic, no LLM calls, no ChromaDB queries, no
-mock-API calls. The point of this rung is to prove the graph shape and the
-checkpointer round-trip work today — real behavior gets bolted into these
-stubs incrementally.
+via `SqliteSaver`. `discovery_node` runs real logic as of Rung 8 (see below).
+The remaining five nodes are still **stubs**: hardcoded/deterministic output
+instead of real agent logic, no LLM calls, no ChromaDB queries, no mock-API
+calls. Real behavior gets bolted into these stubs incrementally.
 
 ## Graph shape
 
@@ -38,7 +37,7 @@ monitor
 
 | Node | Real logic lands in |
 |---|---|
-| `discovery_node` | Rung 8 — semantic ChromaDB query via `backend.ingestion.retrieve` |
+| `discovery_node` | **Rung 8 (done)** — thin wrapper around `backend.agents.discovery.run_discovery`: semantic ChromaDB query via `backend.ingestion.retrieve`, structured eligibility check, Featherless tie-break for ambiguous candidates |
 | `verification_node`, `execution_node` | Rung 9 — real DigiLocker/application calls via `backend.mocks.api` |
 | `monitor_node`, `escalate_node` | Rung 10 — real pause/wake via the checkpointer, RTI drafting via `backend.rti.renderer` |
 
@@ -62,23 +61,15 @@ it's a local, disposable SQLite file that regenerates on every run; there's
 nothing in it worth versioning, and every thread_id gets its own row so
 runs never collide.
 
-## Known schema divergence (flagged, not fixed here)
+## Known schema divergence — RESOLVED in Rung 8
 
-`backend/state.py` was explicitly out of scope for this rung. Its declared
-Literal enums don't cover every stub value used here:
-
-- `SchemeThread.phase` (`SchemePhase` in state.py) doesn't include
-  `"matched"`, `"documents_verified"`, `"submitted"`, or `"rti_drafted"` —
-  the closest existing members are `"discovered"`, `"docs_ready"`,
-  `"filed"`, `"escalated_rti"`.
-- `SevaState.current_phase` doesn't include `"monitor"` or `"escalate"` —
-  state.py has `"monitoring"` / `"escalation"` instead.
-
-Python doesn't enforce TypedDict Literals at runtime, so none of this
-breaks anything today, but a type checker would flag it. Whichever of
-Rungs 8-10 first replaces these stubs with real logic should either widen
-`state.py`'s Literals to match, or remap these stub values onto the
-existing enum members.
+Every phase string assignment in `nodes.py` was remapped onto the exact
+`SchemePhase` / `current_phase` Literal values already declared in
+`backend/state.py`, instead of widening those Literals: `"matched"` ->
+`"discovered"`, `"documents_verified"` -> `"docs_ready"`, `"submitted"` ->
+`"filed"`, `"rti_drafted"` -> `"escalated_rti"`, `"monitor"` ->
+`"monitoring"`, `"escalate"` -> `"escalation"`. Each remapping has an inline
+comment at its assignment in `nodes.py` explaining the choice.
 
 Two field-name (not just value) mismatches were resolved by using the
 already-declared field instead of inventing a new one: the escalate stub

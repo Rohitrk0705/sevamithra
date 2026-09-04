@@ -32,11 +32,9 @@ def test_full_happy_path():
 
     assert len(result["scheme_threads"]) == 1
     thread = result["scheme_threads"]["PM-KISAN"]
-    assert thread["phase"] == "rti_drafted"
+    assert thread["phase"] == "escalated_rti"
     assert len(result["reasoning_log"]) >= 6
-    # Matches the stub value nodes.py actually writes (see its module
-    # docstring re: divergence from state.py's declared current_phase Literal).
-    assert result["current_phase"] == "escalate"
+    assert result["current_phase"] == "escalation"
 
 
 def test_checkpointer_persists():
@@ -51,7 +49,7 @@ def test_checkpointer_persists():
     reloaded_graph = build_graph()
     reloaded_state = reloaded_graph.get_state(config)
 
-    assert reloaded_state.values["current_phase"] == "escalate"
+    assert reloaded_state.values["current_phase"] == "escalation"
     assert len(reloaded_state.values["scheme_threads"]) == 1
 
 
@@ -68,15 +66,15 @@ def test_resume_from_checkpoint():
     paused = graph.get_state(config)
 
     assert "escalate" in paused.next
-    assert paused.values["current_phase"] == "monitor"
+    assert paused.values["current_phase"] == "monitoring"
     assert paused.values["scheme_threads"]["PM-KISAN"]["phase"] == "monitoring"
 
     graph.invoke(None, config=config)
     resumed = graph.get_state(config)
 
     assert resumed.next == ()
-    assert resumed.values["current_phase"] == "escalate"
-    assert resumed.values["scheme_threads"]["PM-KISAN"]["phase"] == "rti_drafted"
+    assert resumed.values["current_phase"] == "escalation"
+    assert resumed.values["scheme_threads"]["PM-KISAN"]["phase"] == "escalated_rti"
 
 
 def test_empty_discovery_skips_to_end(monkeypatch):
