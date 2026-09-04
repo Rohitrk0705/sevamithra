@@ -3,11 +3,11 @@ backend/llm.py
 
 The single LLM wrapper for the entire SevaMithra codebase. Every agent node
 (Discovery, Validator, Filler, Monitor, Escalation) calls chat() or
-chat_json() from here — nothing imports openai, ollama, or requests
-directly.
+chat_json() from here — nothing imports openai or requests directly.
 
-Backend: local Ollama, served at its OpenAI-compatible /v1 endpoint. No
-cloud LLM providers, no API keys.
+Backend: Featherless.ai, served at its OpenAI-compatible /v1 endpoint.
+Requires FEATHERLESS_API_KEY. This is the only LLM provider in the
+codebase — no local/Ollama fallback.
 """
 
 import json
@@ -18,9 +18,9 @@ from typing import Any, Optional
 
 import openai
 
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
-OLLAMA_API_KEY = "ollama"
+FEATHERLESS_BASE_URL = os.getenv("FEATHERLESS_BASE_URL", "https://api.featherless.ai/v1")
+FEATHERLESS_MODEL = os.getenv("FEATHERLESS_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+FEATHERLESS_API_KEY = os.getenv("FEATHERLESS_API_KEY")
 
 DEFAULT_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.2"))
 DEFAULT_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "1024"))
@@ -32,12 +32,12 @@ _client: Optional["openai.OpenAI"] = None
 
 
 def get_client() -> "openai.OpenAI":
-    """Returns a cached openai.OpenAI client pointed at Ollama's /v1 endpoint."""
+    """Returns a cached openai.OpenAI client pointed at Featherless's /v1 endpoint."""
     global _client
     if _client is None:
         _client = openai.OpenAI(
-            base_url=OLLAMA_BASE_URL,
-            api_key=OLLAMA_API_KEY,
+            base_url=FEATHERLESS_BASE_URL,
+            api_key=FEATHERLESS_API_KEY,
             timeout=DEFAULT_TIMEOUT_SECONDS,
         )
     return _client
@@ -45,7 +45,7 @@ def get_client() -> "openai.OpenAI":
 
 def get_active_model() -> str:
     """Returns the active model name. Call this rather than hardcoding."""
-    return OLLAMA_MODEL
+    return FEATHERLESS_MODEL
 
 
 def chat(
@@ -169,7 +169,7 @@ def health_check() -> dict:
     result = {
         "ok": False,
         "model": get_active_model(),
-        "base_url": OLLAMA_BASE_URL,
+        "base_url": FEATHERLESS_BASE_URL,
         "error": None,
     }
     try:

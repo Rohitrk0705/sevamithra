@@ -16,7 +16,8 @@ noted inline at its assignment.
 
 from datetime import datetime, timezone
 
-from backend.state import SevaState, make_reasoning_step, make_scheme_thread
+from backend.agents.discovery import run_discovery
+from backend.state import SevaState, make_reasoning_step
 
 
 def _now_iso() -> str:
@@ -43,34 +44,24 @@ def trigger_node(state: SevaState) -> dict:
 
 
 def discovery_node(state: SevaState) -> dict:
-    scheme_id = "PM-KISAN"
-    thread = make_scheme_thread(
-        scheme_id=scheme_id,
-        scheme_name="PM Kisan Samman Nidhi",
-        confidence=0.85,
-    )
-    # Rung 8 drift fix: stub used "matched", which has no SchemePhase Literal
-    # equivalent. make_scheme_thread() already defaults phase to "discovered"
-    # (the exact Literal for "found, not yet verified"), so no override needed.
+    """Thin LangGraph adapter around backend.agents.discovery.run_discovery.
 
-    step = make_reasoning_step(
-        agent="discovery",
-        action="match_schemes",
-        detail=(
-            "[STUB] Hardcoded a single match: PM-KISAN, confidence 0.85, "
-            "instead of actually searching. Real Discovery node will "
-            "semantically query the ChromaDB scheme corpus "
-            "(backend.ingestion.retrieve.query_schemes) against the user's "
-            "profile and rank real candidates."
-        ),
-        scheme_id=scheme_id,
-    )
+    run_discovery is a pure function that returns a full mutated SevaState
+    (see its docstring). scheme_threads and pursued_scheme_ids have no
+    reducer in SevaState, so they're returned wholesale (last-write-wins);
+    reasoning_log IS reduced via Annotated[list, add], so only the newly
+    appended steps are returned here to avoid double-appending.
+    """
+    result_state = run_discovery(state)
+    new_steps = result_state["reasoning_log"][len(state["reasoning_log"]):]
+
     return {
         "current_phase": "discovery",
-        "scheme_threads": {scheme_id: thread},
-        "pursued_scheme_ids": [scheme_id],
-        "reasoning_log": [step],
-        "updated_at": _now_iso(),
+        "scheme_threads": result_state["scheme_threads"],
+        "pursued_scheme_ids": result_state["pursued_scheme_ids"],
+        "discovery_status": result_state.get("discovery_status"),
+        "reasoning_log": new_steps,
+        "updated_at": result_state["updated_at"],
     }
 
 

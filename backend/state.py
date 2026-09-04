@@ -76,6 +76,7 @@ class SchemeThread(TypedDict):
     scheme_name: str
     phase: SchemePhase
     confidence: float
+    blocked_on: list[str]
     documents: list[DocumentStatus]
     application_id: Optional[str]
     filed_at: Optional[str]
@@ -120,6 +121,9 @@ class SevaState(TypedDict):
     session_id: str
     created_at: str
     updated_at: str
+    # Set only when Discovery exhausts both threshold passes (0.7, then 0.5)
+    # with zero pursued schemes. None otherwise — added in Rung 8.
+    discovery_status: Optional[Literal["no_matches"]]
 
 
 # ---------- Helpers ----------
@@ -163,6 +167,7 @@ def create_initial_state(raw_input: str, session_id: Optional[str] = None) -> Se
         session_id=session_id or str(uuid.uuid4()),
         created_at=now,
         updated_at=now,
+        discovery_status=None,
     )
 
 
@@ -187,6 +192,7 @@ def make_scheme_thread(
     scheme_name: str,
     confidence: float,
     charter_deadline_days: Optional[int] = None,
+    blocked_on: Optional[list[str]] = None,
 ) -> SchemeThread:
     """Build a fresh SchemeThread when Discovery decides to pursue a scheme."""
     return SchemeThread(
@@ -194,6 +200,7 @@ def make_scheme_thread(
         scheme_name=scheme_name,
         phase="discovered",
         confidence=confidence,
+        blocked_on=blocked_on or [],
         documents=[],
         application_id=None,
         filed_at=None,

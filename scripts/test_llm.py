@@ -1,6 +1,6 @@
 """
-Standalone smoke test for backend/llm.py. Requires Ollama running locally
-with llama3.1:8b pulled. Not a pytest suite — run directly:
+Standalone smoke test for backend/llm.py. Requires FEATHERLESS_API_KEY to
+be set (see .env). Not a pytest suite — run directly:
 
     python scripts/test_llm.py
 """
